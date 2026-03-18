@@ -1,0 +1,11 @@
+services:
+  vk-turn-client:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: client
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${WG_PUBLIC_PORT:-51820}:51820/udp"

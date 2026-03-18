@@ -216,3 +216,73 @@ chmod 777 ./client-android
 
 ## Direct mode
 С флагом `-no-dtls` можно отправлять пакеты без обфускации DTLS и подключаться к обычным серверам Wireguard. Может привести к бану от вк/яндекса.
+
+
+## Docker deployment: server 1 + server 2
+
+Ниже готовая схема именно под ваш сценарий:
+
+- **Сервер 1** поднимает `client` и слушает публичный UDP-порт WireGuard, например `51820/udp`.
+- **Сервер 2** поднимает `server`, принимает трафик от сервера 1 на `56000/udp` и передаёт его в локальный WireGuard-контейнер.
+- WireGuard-клиенты подключаются к **серверу 1**, а реальные WireGuard-сессии завершаются на **сервере 2**.
+
+### Файлы
+
+- `Dockerfile` — общий multi-stage build для `client` и `server`
+- `deploy/server1/docker-compose.yml` — compose для сервера 1
+- `deploy/server2/docker-compose.yml` — compose для сервера 2
+- `deploy/server1/.env.example` и `deploy/server2/.env.example` — шаблоны переменных окружения
+
+### Запуск на сервере 1
+
+```bash
+cd deploy/server1
+cp .env.example .env
+# отредактируйте PEER_ADDR и VK_LINK
+docker compose up -d --build
+```
+
+Что нужно указать:
+
+- `PEER_ADDR` — публичный IP/домен **сервера 2** с портом `56000`, например `203.0.113.20:56000`
+- `VK_LINK` — ссылка на VK Calls
+- `WG_PUBLIC_PORT` — UDP-порт, на который будут подключаться ваши WireGuard-клиенты
+
+### Запуск на сервере 2
+
+```bash
+cd deploy/server2
+cp .env.example .env
+# обязательно выставьте SERVERURL равным публичному IP или DNS сервера 1
+docker compose up -d --build
+```
+
+Ключевой момент:
+
+- `SERVERURL` в контейнере WireGuard на **сервере 2** должен указывать на **сервер 1**, потому что клиенты подключаются именно туда.
+- `CONNECT_ADDR=127.0.0.1:51820` оставляет `vk-turn-proxy server` привязанным к локальному WireGuard-контейнеру.
+
+### Схема трафика
+
+```text
+WireGuard client
+    |
+    | UDP 51820
+    v
+Server 1: vk-turn-proxy client (Docker)
+    |
+    | WebRTC/TURN over VK
+    v
+Server 2: vk-turn-proxy server (Docker)
+    |
+    | UDP 51820
+    v
+Server 2: WireGuard container
+```
+
+### Примечания
+
+- На **сервере 1** нужно открыть входящий UDP-порт WireGuard, обычно `51820/udp`.
+- На **сервере 2** нужно открыть входящий UDP-порт `56000/udp` для `vk-turn-proxy server`.
+- Если TCP-режим TURN работает нестабильно, на сервере 1 можно переключить `TRANSPORT_MODE=udp`.
+- Если хотите использовать существующий WireGuard на сервере 2 вне Docker, можно не запускать контейнер `wireguard`, а задать `CONNECT_ADDR` на адрес уже существующего сервиса.

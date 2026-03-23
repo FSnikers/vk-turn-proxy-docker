@@ -116,6 +116,99 @@ WireGuard не должен туннелировать трафик самого
 2. **Затем** вернитесь в WireGuard и включите туннель (переключатель в положение **ON**)
 3. Проверьте соединение — откройте браузер и перейдите на любой сайт
 
+
+## 🪟 Настройка Windows
+
+### 1. Подготовка WireGuard
+
+#### 1.1 Установка WireGuard
+Скачайте и установите [WireGuard для Windows](https://www.wireguard.com/install/)
+
+#### 1.2 Импорт конфигурации
+1. Получите конфигурационный файл с сервера (файл `client_1.conf`)
+2. Откройте WireGuard
+3. Нажмите **«Import tunnel(s) from file»**
+4. Выберите полученный файл
+
+#### 1.3 Редактирование конфигурации
+В импортированном конфиге измените следующие параметры:
+[Interface]
+PrivateKey = ...
+Address = 10.0.0.2/32
+DNS = 8.8.8.8
+MTU = 1280 # ← Установите 1280
+
+[Peer]
+PublicKey = ...
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = 127.0.0.1:9000 # ← Измените на 127.0.0.1:9000
+PersistentKeepalive = 25
+
+text
+
+> ⚠️ **Важно:** Не включайте WireGuard до тех пор, пока прокси не установит соединение!
+
+---
+
+### 2. Скачивание прокси-клиента
+
+Скачайте последнюю версию `client-windows.exe`:
+
+🔗 **Ссылка для скачивания:** [https://github.com/cacggghp/vk-turn-proxy/releases/tag/v1.1.1](https://github.com/cacggghp/vk-turn-proxy/releases/tag/v1.1.1)
+
+В разделе **Assets** скачайте файл:
+- `client-windows.exe` — для Windows x64
+- `client-windows-386.exe` — для Windows x86 (32-бит)
+
+После скачивания разместите файл в удобной папке, например:
+C:\good-turn\client.exe
+
+text
+
+> 💡 **Совет:** Переименуйте файл в `client.exe` для удобства использования в командах ниже.
+
+---
+
+### 3. Запуск прокси
+
+#### 3.1 Подготовка PowerShell
+1. Нажмите **Win + X** и выберите **«Windows PowerShell (Администратор)»**
+2. Перейдите в папку с прокси:
+```powershell
+cd C:\good-turn
+Разрешите выполнение скриптов (если нужно):
+
+powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+3.2 Запуск для VK
+powershell
+.\client.exe -peer 123.45.67.89:56000 -vk-link "https://vk.com/call/join/..." -listen 127.0.0.1:9000 | .\routes.ps1
+```
+#### 4. Параметры запуска
+Параметр	Описание	Пример
+- -peer	IP и порт вашего сервера	-peer 123.45.67.89:56000
+- -vk-link	Ссылка на звонок ВК	-vk-link "https://vk.com/call/join/..."
+- -listen	Локальный адрес для WireGuard	-listen 127.0.0.1:9000
+- -turn	Ручное указание TURN-сервера	-turn 5.255.211.241
+- -udp	Использовать UDP вместо TCP	-udp
+- -n	Количество потоков (1-5)	-n 3
+
+5. Дополнительные опции
+🔧 Выбор TURN-сервера вручную
+Если автоматическое определение не работает, укажите TURN-сервер вручную:
+
+#### Для VK:
+
+```powershell
+.\client.exe -turn 5.255.211.241 -peer 123.45.67.89:56000 -vk-link "..." -listen 127.0.0.1:9000 | .\routes.ps1
+```
+Для ОК (Одноклассники):
+
+```powershell
+.\client.exe -turn 217.20.155.67 -peer 123.45.67.89:56000 -ok-link "..." -listen 127.0.0.1:9000 | .\routes.ps1
+```
+
+
 ### 🔍 Проверка работоспособности
 
 - Откройте сайт [2ip.ru](https://2ip.ru) — должен отображаться IP-адрес вашего сервера (VPS)
